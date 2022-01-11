@@ -184,7 +184,8 @@ resource "elasticsearch_composable_index_template" "test" {
     }
   },
   "priority": 200,
-  "version": 3
+  "version": 3,
+  "data_stream": {}
 }
 EOF
 }
