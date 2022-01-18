@@ -113,7 +113,7 @@ func resourceElasticsearchOpenDistroMonitorUpdate(d *schema.ResourceData, m inte
 func resourceElasticsearchOpenDistroMonitorDelete(d *schema.ResourceData, m interface{}) error {
 	var err error
 
-	path, err := uritemplates.Expand("/_opendistro/_alerting/monitors/{id}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_alerting/monitors/{id}", map[string]string{
 		"id": d.Id(),
 	})
 	if err != nil {
@@ -146,7 +146,7 @@ func resourceElasticsearchOpenDistroGetMonitor(monitorID string, m interface{}) 
 	var err error
 	response := new(monitorResponse)
 
-	path, err := uritemplates.Expand("/_opendistro/_alerting/monitors/{id}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_alerting/monitors/{id}", map[string]string{
 		"id": monitorID,
 	})
 	if err != nil {
@@ -196,7 +196,7 @@ func resourceElasticsearchOpenDistroPostMonitor(d *schema.ResourceData, m interf
 	var err error
 	response := new(monitorResponse)
 
-	path := "/_opendistro/_alerting/monitors/"
+	path := "/_plugins/_alerting/monitors/"
 
 	var body json.RawMessage
 	esClient, err := getClient(m.(*ProviderConf))
@@ -243,7 +243,7 @@ func resourceElasticsearchOpenDistroPutMonitor(d *schema.ResourceData, m interfa
 	var err error
 	response := new(monitorResponse)
 
-	path, err := uritemplates.Expand("/_opendistro/_alerting/monitors/{id}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_alerting/monitors/{id}", map[string]string{
 		"id": d.Id(),
 	})
 	if err != nil {

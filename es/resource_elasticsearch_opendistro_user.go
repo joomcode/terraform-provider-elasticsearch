@@ -119,7 +119,7 @@ func resourceElasticsearchOpenDistroUserUpdate(d *schema.ResourceData, m interfa
 func resourceElasticsearchOpenDistroUserDelete(d *schema.ResourceData, m interface{}) error {
 	var err error
 
-	path, err := uritemplates.Expand("/_opendistro/_security/api/internalusers/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/internalusers/{name}", map[string]string{
 		"name": d.Get("username").(string),
 	})
 	if err != nil {
@@ -151,7 +151,7 @@ func resourceElasticsearchGetOpenDistroUser(userID string, m interface{}) (UserB
 	var err error
 	user := new(UserBody)
 
-	path, err := uritemplates.Expand("/_opendistro/_security/api/internalusers/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/internalusers/{name}", map[string]string{
 		"name": userID,
 	})
 
@@ -211,7 +211,7 @@ func resourceElasticsearchPutOpenDistroUser(d *schema.ResourceData, m interface{
 		return response, fmt.Errorf("Body Error : %s", userJSON)
 	}
 
-	path, err := uritemplates.Expand("/_opendistro/_security/api/internalusers/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/internalusers/{name}", map[string]string{
 		"name": d.Get("username").(string),
 	})
 	if err != nil {

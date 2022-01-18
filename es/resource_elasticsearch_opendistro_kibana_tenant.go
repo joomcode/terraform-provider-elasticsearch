@@ -128,7 +128,7 @@ func resourceElasticsearchOpenDistroKibanaTenantUpdate(d *schema.ResourceData, m
 }
 
 func resourceElasticsearchOpenDistroKibanaTenantDelete(d *schema.ResourceData, m interface{}) error {
-	path, err := uritemplates.Expand("/_opendistro/_security/api/tenants/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/tenants/{name}", map[string]string{
 		"name": d.Get("tenant_name").(string),
 	})
 	if err != nil {
@@ -160,7 +160,7 @@ func resourceElasticsearchGetOpenDistroKibanaTenant(tenantID string, m interface
 	var err error
 	tenant := new(TenantBody)
 
-	path, err := uritemplates.Expand("/_opendistro/_security/api/tenants/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/tenants/{name}", map[string]string{
 		"name": tenantID,
 	})
 
@@ -211,7 +211,7 @@ func resourceElasticsearchPutOpenDistroKibanaTenant(d *schema.ResourceData, m in
 		return response, fmt.Errorf("Body Error : %s", tenantJSON)
 	}
 
-	path, err := uritemplates.Expand("/_opendistro/_security/api/tenants/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/tenants/{name}", map[string]string{
 		"name": d.Get("tenant_name").(string),
 	})
 	if err != nil {

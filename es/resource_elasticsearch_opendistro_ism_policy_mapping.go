@@ -240,7 +240,7 @@ func resourceElasticsearchPostOpendistroPolicyMapping(d *schema.ResourceData, m 
 
 	}
 
-	path, err := uritemplates.Expand("/_opendistro/_ism/{action}/{indexes}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_ism/{action}/{indexes}", map[string]string{
 		"indexes": d.Get("indexes").(string),
 		"action":  action,
 	})
@@ -282,7 +282,7 @@ func resourceElasticsearchPostOpendistroPolicyMapping(d *schema.ResourceData, m 
 
 func resourceElasticsearchGetOpendistroPolicyMapping(indexPattern string, m interface{}) (map[string]interface{}, error) {
 	response := new(map[string]interface{})
-	path, err := uritemplates.Expand("/_opendistro/_ism/explain/{index_pattern}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_ism/explain/{index_pattern}", map[string]string{
 		"index_pattern": indexPattern,
 	})
 	if err != nil {

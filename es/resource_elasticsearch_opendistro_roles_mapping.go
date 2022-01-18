@@ -128,7 +128,7 @@ func resourceElasticsearchOpenDistroRolesMappingUpdate(d *schema.ResourceData, m
 }
 
 func resourceElasticsearchOpenDistroRolesMappingDelete(d *schema.ResourceData, m interface{}) error {
-	path, err := uritemplates.Expand("/_opendistro/_security/api/rolesmapping/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/rolesmapping/{name}", map[string]string{
 		"name": d.Get("role_name").(string),
 	})
 	if err != nil {
@@ -160,7 +160,7 @@ func resourceElasticsearchGetOpenDistroRolesMapping(roleID string, m interface{}
 	var err error
 	var roleMapping = new(RolesMapping)
 
-	path, err := uritemplates.Expand("/_opendistro/_security/api/rolesmapping/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/rolesmapping/{name}", map[string]string{
 		"name": roleID,
 	})
 
@@ -218,7 +218,7 @@ func resourceElasticsearchPutOpenDistroRolesMapping(d *schema.ResourceData, m in
 		return response, fmt.Errorf("Body Error : %s", roleJSON)
 	}
 
-	path, err := uritemplates.Expand("/_opendistro/_security/api/rolesmapping/{name}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_security/api/rolesmapping/{name}", map[string]string{
 		"name": d.Get("role_name").(string),
 	})
 

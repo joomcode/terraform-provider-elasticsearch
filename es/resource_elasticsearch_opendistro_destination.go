@@ -114,7 +114,7 @@ func resourceElasticsearchOpenDistroDestinationUpdate(d *schema.ResourceData, m 
 func resourceElasticsearchOpenDistroDestinationDelete(d *schema.ResourceData, m interface{}) error {
 	var err error
 
-	path, err := uritemplates.Expand("/_opendistro/_alerting/destinations/{id}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_alerting/destinations/{id}", map[string]string{
 		"id": d.Id(),
 	})
 	if err != nil {
@@ -146,7 +146,7 @@ func resourceElasticsearchOpenDistroDestinationDelete(d *schema.ResourceData, m 
 func resourceElasticsearchOpenDistroGetDestination(destinationID string, esClient interface{}) (Destination, error) {
 	switch client := esClient.(type) {
 	case *elastic7.Client:
-		path, err := uritemplates.Expand("/_opendistro/_alerting/destinations/{id}", map[string]string{
+		path, err := uritemplates.Expand("/_plugins/_alerting/destinations/{id}", map[string]string{
 			"id": destinationID,
 		})
 		if err != nil {
@@ -224,7 +224,7 @@ func resourceElasticsearchOpenDistroPostDestination(d *schema.ResourceData, m in
 	var err error
 	response := new(destinationResponse)
 
-	path := "/_opendistro/_alerting/destinations/"
+	path := "/_plugins/_alerting/destinations/"
 
 	var body json.RawMessage
 	esClient, err := getClient(m.(*ProviderConf))
@@ -271,7 +271,7 @@ func resourceElasticsearchOpenDistroPutDestination(d *schema.ResourceData, m int
 	var err error
 	response := new(destinationResponse)
 
-	path, err := uritemplates.Expand("/_opendistro/_alerting/destinations/{id}", map[string]string{
+	path, err := uritemplates.Expand("/_plugins/_alerting/destinations/{id}", map[string]string{
 		"id": d.Id(),
 	})
 	if err != nil {

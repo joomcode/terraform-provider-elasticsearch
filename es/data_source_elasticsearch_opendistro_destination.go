@@ -150,7 +150,7 @@ func destinationElasticsearch7GetAll(client *elastic7.Client, name string) (stri
 	pageSize := 1000
 	destination := make(map[string]interface{})
 	for {
-		path, err := uritemplates.Expand("/_opendistro/_alerting/destinations?startIndex={startIndex}&size={size}", map[string]string{
+		path, err := uritemplates.Expand("/_plugins/_alerting/destinations?startIndex={startIndex}&size={size}", map[string]string{
 			"startIndex": fmt.Sprint(offset),
 			"size":       fmt.Sprint(pageSize),
 		})
