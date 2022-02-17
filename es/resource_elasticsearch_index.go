@@ -94,7 +94,6 @@ var (
 			Type:        schema.TypeString,
 			Description: "Number of shards for the index. This can be set only on creation.",
 			ForceNew:    true,
-			Default:     "1",
 			Optional:    true,
 		},
 		"routing_partition_size": {
