@@ -218,21 +218,21 @@ func Provider() *schema.Provider {
 			"elasticsearch_kibana_object":                   resourceElasticsearchKibanaObject(),
 			"elasticsearch_snapshot_repository":             resourceElasticsearchSnapshotRepository(),
 			"elasticsearch_opendistro_destination":          resourceElasticsearchOpenDistroDestination(),
-			"opensearch_destination":                        resourceOpenSearchDestination(),
+			"elasticsearch_opensearch_destination":          resourceOpenSearchDestination(),
 			"elasticsearch_opendistro_ism_policy":           resourceElasticsearchOpenDistroISMPolicy(),
-			"opensearch_ism_policy":                         resourceOpenSearchISMPolicy(),
+			"elasticsearch_opensearch_ism_policy":           resourceOpenSearchISMPolicy(),
 			"elasticsearch_opendistro_ism_policy_mapping":   resourceElasticsearchOpenDistroISMPolicyMapping(),
-			"opensearch_ism_policy_mapping":                 resourceOpenSearchISMPolicyMapping(),
+			"elasticsearch_opensearch_ism_policy_mapping":   resourceOpenSearchISMPolicyMapping(),
 			"elasticsearch_opendistro_monitor":              resourceElasticsearchOpenDistroMonitor(),
-			"opensearch_monitor":                            resourceOpenSearchMonitor(),
+			"elasticsearch_opensearch_monitor":              resourceOpenSearchMonitor(),
 			"elasticsearch_opendistro_roles_mapping":        resourceElasticsearchOpenDistroRolesMapping(),
-			"opensearch_roles_mapping":                      resourceOpenSearchRolesMapping(),
+			"elasticsearch_opensearch_roles_mapping":        resourceOpenSearchRolesMapping(),
 			"elasticsearch_opendistro_role":                 resourceElasticsearchOpenDistroRole(),
-			"opensearch_role":                               resourceOpenSearchRole(),
+			"elasticsearch_opensearch_role":                 resourceOpenSearchRole(),
 			"elasticsearch_opendistro_user":                 resourceElasticsearchOpenDistroUser(),
-			"opensearch_user":                               resourceOpenSearchUser(),
+			"elasticsearch_opensearch_user":                 resourceOpenSearchUser(),
 			"elasticsearch_opendistro_kibana_tenant":        resourceElasticsearchOpenDistroKibanaTenant(),
-			"opensearch_kibana_tenant":                      resourceOpenSearchKibanaTenant(),
+			"elasticsearch_opensearch_kibana_tenant":        resourceOpenSearchKibanaTenant(),
 			"elasticsearch_xpack_index_lifecycle_policy":    resourceElasticsearchXpackIndexLifecyclePolicy(),
 			"elasticsearch_xpack_license":                   resourceElasticsearchXpackLicense(),
 			"elasticsearch_xpack_role":                      resourceElasticsearchXpackRole(),
@@ -438,8 +438,12 @@ func getClient(conf *ProviderConf) (interface{}, error) {
 		if err != nil {
 			return nil, err
 		}
+	} else if conf.flavor == Unknown && conf.esVersion < "2.0.0" && conf.esVersion >= "1.0.0" {
+		// Version 1.x of OpenSearch very likely. Nothing to do since it's API
+		// compatible with 7.x of ES. If elastic client library supports detecting
+		// flavor, update to Opensearch.
 	} else if conf.esVersion < "6.0.0" {
-		return nil, fmt.Errorf("ElasticSearch version %s is older than 6.0.0 and is not supported.", conf.esVersion)
+		return nil, fmt.Errorf("ElasticSearch version %s is older than 6.0.0 and is not supported, flavor: %v.", conf.esVersion, conf.flavor)
 	}
 
 	return relevantClient, nil
