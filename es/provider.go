@@ -29,13 +29,6 @@ import (
 	elastic6 "gopkg.in/olivere/elastic.v6"
 )
 
-const (
-	// DefaultVersionPingTimeout is the time the ping to check the cluster
-	// version waits for a response from Elasticsearch on startup, i.e. when
-	// creating a provider.
-	DefaultVersionPingTimeout = 5 * time.Second
-)
-
 type ServerFlavor int64
 
 // e.g. elasticsearch, opensearch, elasticsearch-oss, etc.
@@ -61,11 +54,13 @@ type ProviderConf struct {
 	parsedUrl          *url.URL
 	signAWSRequests    bool
 	esVersion          string
+	pingTimeoutSeconds int
 	awsRegion          string
 	awsAssumeRoleArn   string
 	awsAccessKeyId     string
 	awsSecretAccessKey string
 	awsSessionToken    string
+	awsSig4Service     string
 	awsProfile         string
 	certPemPath        string
 	keyPemPath         string
@@ -194,11 +189,26 @@ func Provider() *schema.Provider {
 				Default:     true,
 				Description: "Enable signing of AWS elasticsearch requests. The `url` must refer to AWS ES domain (`*.<region>.es.amazonaws.com`), or `aws_region` must be specified explicitly.",
 			},
+			"aws_signature_service": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "es",
+				Description: "AWS service name used in the credential scope of signed requests to ElasticSearch.",
+			},
 			"elasticsearch_version": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Default:     "",
 				Description: "ElasticSearch Version",
+			},
+			// version_ping_timeout is the time the ping to check the cluster
+			// version waits for a response from Elasticsearch on startup, e.g. when
+			// creating a provider.
+			"version_ping_timeout": {
+				Type:        schema.TypeInt,
+				Optional:    true,
+				Default:     5,
+				Description: "Version ping timeout in seconds",
 			},
 			"host_override": {
 				Type:        schema.TypeString,
@@ -211,8 +221,10 @@ func Provider() *schema.Provider {
 		ResourcesMap: map[string]*schema.Resource{
 			"elasticsearch_index":                           resourceElasticsearchIndex(),
 			"elasticsearch_index_template":                  resourceElasticsearchIndexTemplate(),
+			"elasticsearch_cluster_settings":                resourceElasticsearchClusterSettings(),
 			"elasticsearch_composable_index_template":       resourceElasticsearchComposableIndexTemplate(),
 			"elasticsearch_component_template":              resourceElasticsearchComponentTemplate(),
+			"elasticsearch_data_stream":                     resourceElasticsearchDataStream(),
 			"elasticsearch_ingest_pipeline":                 resourceElasticsearchIngestPipeline(),
 			"elasticsearch_kibana_alert":                    resourceElasticsearchKibanaAlert(),
 			"elasticsearch_kibana_object":                   resourceElasticsearchKibanaObject(),
@@ -240,12 +252,13 @@ func Provider() *schema.Provider {
 			"elasticsearch_xpack_snapshot_lifecycle_policy": resourceElasticsearchXpackSnapshotLifecyclePolicy(),
 			"elasticsearch_xpack_user":                      resourceElasticsearchXpackUser(),
 			"elasticsearch_xpack_watch":                     resourceElasticsearchXpackWatch(),
+			"elasticsearch_script":                          resourceElasticsearchScript(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
 			"elasticsearch_host":                   dataSourceElasticsearchHost(),
 			"elasticsearch_opendistro_destination": dataSourceElasticsearchOpenDistroDestination(),
-			"opensearch_destination":               dataSourceOpenSearchDestination(),
+			"elasticsearch_opensearch_destination": dataSourceOpenSearchDestination(),
 		},
 
 		ConfigureContextFunc: providerConfigure,
@@ -260,20 +273,22 @@ func providerConfigure(c context.Context, d *schema.ResourceData) (interface{}, 
 	}
 
 	return &ProviderConf{
-		rawUrl:          rawUrl,
-		kibanaUrl:       d.Get("kibana_url").(string),
-		insecure:        d.Get("insecure").(bool),
-		sniffing:        d.Get("sniff").(bool),
-		healthchecking:  d.Get("healthcheck").(bool),
-		cacertFile:      d.Get("cacert_file").(string),
-		username:        d.Get("username").(string),
-		password:        d.Get("password").(string),
-		token:           d.Get("token").(string),
-		tokenName:       d.Get("token_name").(string),
-		parsedUrl:       parsedUrl,
-		signAWSRequests: d.Get("sign_aws_requests").(bool),
-		esVersion:       d.Get("elasticsearch_version").(string),
-		awsRegion:       d.Get("aws_region").(string),
+		rawUrl:             rawUrl,
+		kibanaUrl:          d.Get("kibana_url").(string),
+		insecure:           d.Get("insecure").(bool),
+		sniffing:           d.Get("sniff").(bool),
+		healthchecking:     d.Get("healthcheck").(bool),
+		cacertFile:         d.Get("cacert_file").(string),
+		username:           d.Get("username").(string),
+		password:           d.Get("password").(string),
+		token:              d.Get("token").(string),
+		tokenName:          d.Get("token_name").(string),
+		parsedUrl:          parsedUrl,
+		signAWSRequests:    d.Get("sign_aws_requests").(bool),
+		awsSig4Service:     d.Get("aws_signature_service").(string),
+		esVersion:          d.Get("elasticsearch_version").(string),
+		pingTimeoutSeconds: d.Get("version_ping_timeout").(int),
+		awsRegion:          d.Get("aws_region").(string),
 
 		awsAssumeRoleArn:   d.Get("aws_assume_role_arn").(string),
 		awsAccessKeyId:     d.Get("aws_access_key").(string),
@@ -360,14 +375,19 @@ func getClient(conf *ProviderConf) (interface{}, error) {
 
 	// Use the v7 client to ping the cluster to determine the version if one was not provided
 	if conf.esVersion == "" {
-		log.Printf("[INFO] Pinging url to determine version %+v", conf.rawUrl)
-		ctx, cancel := context.WithTimeout(context.Background(), DefaultVersionPingTimeout)
+		log.Printf("[INFO] Pinging url to determine version %+v with timeout %ds", conf.rawUrl, conf.pingTimeoutSeconds)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(conf.pingTimeoutSeconds)*time.Second)
 		defer cancel()
 		info, httpStatus, err := client.Ping(conf.rawUrl).Do(ctx)
 		if httpStatus == http.StatusForbidden {
 			return nil, errors.New("HTTP 403 Forbidden: Permission denied. Please ensure that the correct credentials are being used to access the cluster.")
 		}
 		if err != nil {
+			// Replace the timeout error because it gives no context
+			if os.IsTimeout(err) {
+				err = fmt.Errorf("timeout after %d seconds while pinging '%+v' to determine server version, please consider setting 'elasticsearch_version' to avoid this lookup", conf.pingTimeoutSeconds, conf.rawUrl)
+			}
+
 			return nil, err
 		}
 		conf.esVersion = info.Version.Number
@@ -577,7 +597,7 @@ func awsHttpClient(region string, conf *ProviderConf, headers map[string]string)
 		log.Fatal(err)
 	}
 	signer := awssigv4.NewSigner(session.Config.Credentials)
-	client, err := aws_signing_client.New(signer, session.Config.HTTPClient, "es", region)
+	client, err := aws_signing_client.New(signer, session.Config.HTTPClient, conf.awsSig4Service, region)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -593,21 +613,24 @@ func awsHttpClient(region string, conf *ProviderConf, headers map[string]string)
 }
 
 func tokenHttpClient(conf *ProviderConf, headers map[string]string) *http.Client {
-	client := http.DefaultClient
+	// Setup TLS options
+	tlsConfig := &tls.Config{}
+	if conf.insecure {
+		tlsConfig.InsecureSkipVerify = true
+	} else if conf.hostOverride != "" {
+		tlsConfig.ServerName = conf.hostOverride
+	}
 
-	rt := WithHeader(client.Transport)
+	// Wrapper to inject headers as needed
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	rt := WithHeader(transport)
 	rt.hostOverride = conf.hostOverride
 	rt.Set("Authorization", fmt.Sprintf("%s %s", conf.tokenName, conf.token))
 	for k, v := range headers {
 		rt.Set(k, v)
 	}
-	client.Transport = rt
 
-	if conf.insecure {
-		client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true
-	} else if conf.hostOverride != "" {
-		client.Transport.(*http.Transport).TLSClientConfig.ServerName = conf.hostOverride
-	}
+	client := &http.Client{Transport: rt}
 
 	return client
 }
@@ -661,19 +684,22 @@ func tlsHttpClient(conf *ProviderConf, headers map[string]string) *http.Client {
 }
 
 func defaultHttpClient(conf *ProviderConf, headers map[string]string) *http.Client {
-	// Gets the default HTTP client
-	client := http.DefaultClient
-	rt := WithHeader(client.Transport)
+	// Setup TLS options
+	tlsConfig := &tls.Config{}
+	if conf.insecure {
+		tlsConfig.InsecureSkipVerify = true
+	} else if conf.hostOverride != "" {
+		tlsConfig.ServerName = conf.hostOverride
+	}
+
+	// Wrapper to inject headers as needed
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+	rt := WithHeader(transport)
+	rt.hostOverride = conf.hostOverride
 	for k, v := range headers {
 		rt.Set(k, v)
 	}
-	rt.hostOverride = conf.hostOverride
-	client.Transport = rt
 
-	if conf.insecure {
-		client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify = true
-	} else if conf.hostOverride != "" {
-		client.Transport.(*http.Transport).TLSClientConfig.ServerName = conf.hostOverride
-	}
+	client := &http.Client{Transport: rt}
 	return client
 }

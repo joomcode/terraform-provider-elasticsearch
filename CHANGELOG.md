@@ -3,8 +3,29 @@
 ### Changed
 
 ### Added
+* Add custer settings resource
+* Add data stream resource
 
 ### Fixed
+* [role mapping] Check error before referencing response
+
+## [2.0.1] - 2022-04-10
+### Added
+* Add script resource (#264)
+
+### Fixed
+* [composable index template] Fix diff on data_streams
+
+## [2.0.0] - 2022-03-13
+### Changed
+- [index] Remove primary shards default so templates can specify.
+
+### Added
+- [provider] Allow configurable service name in AWS signatures (#254)
+- [kibana alert] A `params_json` attribute to allow all alert types
+
+### Fixed
+- [provider] Fix interface panic conversions in defaultHttpClient and tokenHttpClient (#255)
 
 ## [2.0.0-beta.4] - 2022-01-29
 ### Changed

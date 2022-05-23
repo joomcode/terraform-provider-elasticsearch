@@ -141,6 +141,17 @@ For legacy index templates (ES < 7.8) or /_template endpoint on ES >= 7.8 see no
 */
 func normalizeComposableIndexTemplate(tpl map[string]interface{}) {
 	delete(tpl, "version")
+
+	// data_stream accepts only the attribute "hidden", but can return additional attributes, so
+	// remove them
+	if dataStream, ok := tpl["data_stream"].(map[string]interface{}); ok {
+		for k := range dataStream {
+			if k != "hidden" {
+				delete(dataStream, k)
+			}
+		}
+	}
+
 	if innerTpl, ok := tpl["template"]; ok {
 		if innerTplMap, ok := innerTpl.(map[string]interface{}); ok {
 			if settings, ok := innerTplMap["settings"]; ok {
@@ -225,6 +236,23 @@ func flattenMap(m map[string]interface{}) map[string]interface{} {
 	}
 
 	return f
+}
+
+func concatStringSlice(args ...[]string) []string {
+	merged := make([]string, 0)
+	for _, slice := range args {
+		merged = append(merged, slice...)
+	}
+	return merged
+}
+
+func containsString(h []string, n string) bool {
+	for _, e := range h {
+		if e == n {
+			return true
+		}
+	}
+	return false
 }
 
 func flattenIndicesFieldSecurity(rawSettings map[string]interface{}) []map[string]interface{} {

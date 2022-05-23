@@ -69,6 +69,12 @@ func TestAccElasticsearchKibanaAlert(t *testing.T) {
 					testCheckElasticsearchKibanaAlertExists("elasticsearch_kibana_alert.test"),
 				),
 			},
+			{
+				Config: testAccElasticsearchKibanaAlertParamsJSONV77,
+				Check: resource.ComposeTestCheckFunc(
+					testCheckElasticsearchKibanaAlertExists("elasticsearch_kibana_alert.test_params_json"),
+				),
+			},
 		},
 	})
 }
@@ -252,21 +258,49 @@ var testAccElasticsearchKibanaAlertNoActionsV77 = `
 resource "elasticsearch_kibana_alert" "test" {
   name = "terraform-alert"
   schedule {
-  	interval = "1m"
+    interval = "1m"
   }
   conditions {
-    aggregation_type = "avg"
-    term_size = 6
+    aggregation_type     = "avg"
+    term_size            = 6
     threshold_comparator = ">"
-    time_window_size = 5
-    time_window_unit = "m"
-    group_by = "top"
-    threshold = [1000]
-    index = [".test-index"]
-    time_field = "@timestamp"
-    aggregation_field = "sheet.version"
-    term_field = "name.keyword"
+    time_window_size     = 5
+    time_window_unit     = "m"
+    group_by             = "top"
+    threshold            = [1000]
+    index                = [".test-index"]
+    time_field           = "@timestamp"
+    aggregation_field    = "sheet.version"
+    term_field           = "name.keyword"
   }
+}
+`
+
+var testAccElasticsearchKibanaAlertParamsJSONV77 = `
+resource "elasticsearch_kibana_alert" "test_params_json" {
+  name = "terraform-alert"
+  schedule {
+    interval = "1m"
+  }
+  params_json = <<EOF
+{
+  "aggType":"avg",
+  "termSize":6,
+  "thresholdComparator":">",
+  "timeWindowSize":5,
+  "timeWindowUnit":"m",
+  "groupBy":"top",
+  "threshold":[
+    1000
+  ],
+  "index":[
+    ".test-index"
+  ],
+  "timeField":"@timestamp",
+  "aggField":"sheet.version",
+  "termField":"name.keyword"
+}
+EOF
 }
 `
 

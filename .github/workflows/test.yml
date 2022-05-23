@@ -20,6 +20,7 @@ jobs:
         # version.
         version: v1.28
         args: --verbose --timeout=10m
+        skip-go-installation: true
   test:
     strategy:
       matrix:
@@ -92,15 +93,13 @@ jobs:
     - name: Check Docker containers
       run: docker ps -a
     # While docker/ES is booting up, run the linters
-    - name: Get dependencies
+    - name: Get tools
       run: |
-        go mod vendor
-        # install tools
-        cat tools/tools.go | grep _ | awk -F'"' '{print $2}' | xargs -tI % go install %
+        ./script/install-tools
     - name: Install managed version of terraform
       uses: hashicorp/setup-terraform@v1
       with:
-        terraform_version: 0.14.11
+        terraform_version: 1.0.11
         terraform_wrapper: false
     - name: Run check scripts
       run: |

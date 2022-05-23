@@ -70,7 +70,7 @@ func resourceElasticsearchOpenDistroRolesMapping() *schema.Resource {
 		Importer: &schema.ResourceImporter{
 			StateContext: schema.ImportStatePassthroughContext,
 		},
-		DeprecationMessage: "elasticsearch_opendistro_roles_mapping is deprecated, please use opensearch_roles_mapping resource instead.",
+		DeprecationMessage: "elasticsearch_opendistro_roles_mapping is deprecated, please use elasticsearch_opensearch_roles_mapping resource instead.",
 	}
 }
 
@@ -179,6 +179,9 @@ func resourceElasticsearchGetOpenDistroRolesMapping(roleID string, m interface{}
 			Method: "GET",
 			Path:   path,
 		})
+		if err != nil {
+			return *roleMapping, err
+		}
 		body = res.Body
 	default:
 		err = errors.New("role mapping resource not implemented prior to Elastic v7")
