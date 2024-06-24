@@ -80,12 +80,23 @@ func normalizeMonitor(tpl map[string]interface{}) {
 func normalizeMonitorTriggers(triggers []interface{}) {
 	for _, t := range triggers {
 		if trigger, ok := t.(map[string]interface{}); ok {
-			delete(trigger, "id")
-
-			if actions, ok := trigger["actions"].([]interface{}); ok {
-				normalizeMonitorTriggerActions(actions)
+			if _, ok := trigger["query_level_trigger"]; ok {
+				normalizeMonitorTrigger(trigger["query_level_trigger"].(map[string]interface{}))
+				return
 			}
+			if _, ok := trigger["bucket_level_trigger"]; ok {
+				normalizeMonitorTrigger(trigger["bucket_level_trigger"].(map[string]interface{}))
+				return
+			}
+			normalizeMonitorTrigger(trigger)
 		}
+	}
+}
+func normalizeMonitorTrigger(trigger map[string]interface{}) {
+	delete(trigger, "id")
+
+	if actions, ok := trigger["actions"].([]interface{}); ok {
+		normalizeMonitorTriggerActions(actions)
 	}
 }
 
@@ -192,6 +203,7 @@ func normalizedIndexSettings(settings map[string]interface{}) map[string]interfa
 func normalizeIndexLifecyclePolicy(pol map[string]interface{}) {
 	delete(pol, "version")
 	delete(pol, "modified_date")
+	delete(pol, "in_use_by")
 	if policy, ok := pol["policy"]; ok {
 		if policyMap, ok := policy.(map[string]interface{}); ok {
 			pol["policy"] = normalizedIndexLifecyclePolicy(policyMap)
@@ -588,6 +600,10 @@ func indexPermissionsHash(v interface{}) int {
 }
 
 func tenantPermissionsHash(v interface{}) int {
+	if v == nil {
+		return hashcode("")
+	}
+
 	var buf bytes.Buffer
 	m := v.(map[string]interface{})
 

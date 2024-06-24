@@ -42,30 +42,32 @@ const (
 var awsUrlRegexp = regexp.MustCompile(`([a-z0-9-]+).es.amazonaws.com$`)
 
 type ProviderConf struct {
-	rawUrl             string
-	insecure           bool
-	sniffing           bool
-	healthchecking     bool
-	cacertFile         string
-	username           string
-	password           string
-	token              string
-	tokenName          string
-	parsedUrl          *url.URL
-	signAWSRequests    bool
-	esVersion          string
-	pingTimeoutSeconds int
-	awsRegion          string
-	awsAssumeRoleArn   string
-	awsAccessKeyId     string
-	awsSecretAccessKey string
-	awsSessionToken    string
-	awsSig4Service     string
-	awsProfile         string
-	certPemPath        string
-	keyPemPath         string
-	kibanaUrl          string
-	hostOverride       string
+	rawUrl                   string
+	insecure                 bool
+	sniffing                 bool
+	healthchecking           bool
+	cacertFile               string
+	username                 string
+	password                 string
+	token                    string
+	tokenName                string
+	parsedUrl                *url.URL
+	signAWSRequests          bool
+	esVersion                string
+	pingTimeoutSeconds       int
+	awsRegion                string
+	awsAssumeRoleArn         string
+	awsAssumeRoleExternalID  string
+	awsAssumeRoleSessionName string
+	awsAccessKeyId           string
+	awsSecretAccessKey       string
+	awsSessionToken          string
+	awsSig4Service           string
+	awsProfile               string
+	certPemPath              string
+	keyPemPath               string
+	kibanaUrl                string
+	hostOverride             string
 	// determined after connecting to the server
 	flavor ServerFlavor
 }
@@ -126,6 +128,18 @@ func Provider() *schema.Provider {
 				Optional:    true,
 				Default:     "",
 				Description: "Amazon Resource Name of an IAM Role to assume prior to making AWS API calls.",
+			},
+			"aws_assume_role_external_id": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "External ID configured in the IAM policy of the IAM Role to assume prior to making AWS API calls.",
+			},
+			"aws_assume_role_session_name": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "AWS IAM session name to use when assuming a role.",
 			},
 			"aws_access_key": {
 				Type:        schema.TypeString,
@@ -219,40 +233,41 @@ func Provider() *schema.Provider {
 		},
 
 		ResourcesMap: map[string]*schema.Resource{
-			"elasticsearch_index":                           resourceElasticsearchIndex(),
-			"elasticsearch_index_template":                  resourceElasticsearchIndexTemplate(),
 			"elasticsearch_cluster_settings":                resourceElasticsearchClusterSettings(),
-			"elasticsearch_composable_index_template":       resourceElasticsearchComposableIndexTemplate(),
 			"elasticsearch_component_template":              resourceElasticsearchComponentTemplate(),
+			"elasticsearch_composable_index_template":       resourceElasticsearchComposableIndexTemplate(),
 			"elasticsearch_data_stream":                     resourceElasticsearchDataStream(),
+			"elasticsearch_index_template":                  resourceElasticsearchIndexTemplate(),
+			"elasticsearch_index":                           resourceElasticsearchIndex(),
 			"elasticsearch_ingest_pipeline":                 resourceElasticsearchIngestPipeline(),
 			"elasticsearch_kibana_alert":                    resourceElasticsearchKibanaAlert(),
 			"elasticsearch_kibana_object":                   resourceElasticsearchKibanaObject(),
-			"elasticsearch_snapshot_repository":             resourceElasticsearchSnapshotRepository(),
 			"elasticsearch_opendistro_destination":          resourceElasticsearchOpenDistroDestination(),
-			"elasticsearch_opensearch_destination":          resourceOpenSearchDestination(),
-			"elasticsearch_opendistro_ism_policy":           resourceElasticsearchOpenDistroISMPolicy(),
-			"elasticsearch_opensearch_ism_policy":           resourceOpenSearchISMPolicy(),
 			"elasticsearch_opendistro_ism_policy_mapping":   resourceElasticsearchOpenDistroISMPolicyMapping(),
-			"elasticsearch_opensearch_ism_policy_mapping":   resourceOpenSearchISMPolicyMapping(),
-			"elasticsearch_opendistro_monitor":              resourceElasticsearchOpenDistroMonitor(),
-			"elasticsearch_opensearch_monitor":              resourceOpenSearchMonitor(),
-			"elasticsearch_opendistro_roles_mapping":        resourceElasticsearchOpenDistroRolesMapping(),
-			"elasticsearch_opensearch_roles_mapping":        resourceOpenSearchRolesMapping(),
-			"elasticsearch_opendistro_role":                 resourceElasticsearchOpenDistroRole(),
-			"elasticsearch_opensearch_role":                 resourceOpenSearchRole(),
-			"elasticsearch_opendistro_user":                 resourceElasticsearchOpenDistroUser(),
-			"elasticsearch_opensearch_user":                 resourceOpenSearchUser(),
+			"elasticsearch_opendistro_ism_policy":           resourceElasticsearchOpenDistroISMPolicy(),
 			"elasticsearch_opendistro_kibana_tenant":        resourceElasticsearchOpenDistroKibanaTenant(),
+			"elasticsearch_opendistro_monitor":              resourceElasticsearchOpenDistroMonitor(),
+			"elasticsearch_opendistro_role":                 resourceElasticsearchOpenDistroRole(),
+			"elasticsearch_opendistro_roles_mapping":        resourceElasticsearchOpenDistroRolesMapping(),
+			"elasticsearch_opendistro_user":                 resourceElasticsearchOpenDistroUser(),
+			"elasticsearch_opensearch_audit_config":         resourceOpenSearchAuditConfig(),
+			"elasticsearch_opensearch_destination":          resourceOpenSearchDestination(),
+			"elasticsearch_opensearch_ism_policy_mapping":   resourceOpenSearchISMPolicyMapping(),
+			"elasticsearch_opensearch_ism_policy":           resourceOpenSearchISMPolicy(),
 			"elasticsearch_opensearch_kibana_tenant":        resourceOpenSearchKibanaTenant(),
+			"elasticsearch_opensearch_monitor":              resourceOpenSearchMonitor(),
+			"elasticsearch_opensearch_role":                 resourceOpenSearchRole(),
+			"elasticsearch_opensearch_roles_mapping":        resourceOpenSearchRolesMapping(),
+			"elasticsearch_opensearch_user":                 resourceOpenSearchUser(),
+			"elasticsearch_script":                          resourceElasticsearchScript(),
+			"elasticsearch_snapshot_repository":             resourceElasticsearchSnapshotRepository(),
 			"elasticsearch_xpack_index_lifecycle_policy":    resourceElasticsearchXpackIndexLifecyclePolicy(),
 			"elasticsearch_xpack_license":                   resourceElasticsearchXpackLicense(),
-			"elasticsearch_xpack_role":                      resourceElasticsearchXpackRole(),
 			"elasticsearch_xpack_role_mapping":              resourceElasticsearchXpackRoleMapping(),
+			"elasticsearch_xpack_role":                      resourceElasticsearchXpackRole(),
 			"elasticsearch_xpack_snapshot_lifecycle_policy": resourceElasticsearchXpackSnapshotLifecyclePolicy(),
 			"elasticsearch_xpack_user":                      resourceElasticsearchXpackUser(),
 			"elasticsearch_xpack_watch":                     resourceElasticsearchXpackWatch(),
-			"elasticsearch_script":                          resourceElasticsearchScript(),
 		},
 
 		DataSourcesMap: map[string]*schema.Resource{
@@ -290,14 +305,16 @@ func providerConfigure(c context.Context, d *schema.ResourceData) (interface{}, 
 		pingTimeoutSeconds: d.Get("version_ping_timeout").(int),
 		awsRegion:          d.Get("aws_region").(string),
 
-		awsAssumeRoleArn:   d.Get("aws_assume_role_arn").(string),
-		awsAccessKeyId:     d.Get("aws_access_key").(string),
-		awsSecretAccessKey: d.Get("aws_secret_key").(string),
-		awsSessionToken:    d.Get("aws_token").(string),
-		awsProfile:         d.Get("aws_profile").(string),
-		certPemPath:        d.Get("client_cert_path").(string),
-		keyPemPath:         d.Get("client_key_path").(string),
-		hostOverride:       d.Get("host_override").(string),
+		awsAssumeRoleArn:         d.Get("aws_assume_role_arn").(string),
+		awsAssumeRoleExternalID:  d.Get("aws_assume_role_external_id").(string),
+		awsAssumeRoleSessionName: d.Get("aws_assume_role_session_name").(string),
+		awsAccessKeyId:           d.Get("aws_access_key").(string),
+		awsSecretAccessKey:       d.Get("aws_secret_key").(string),
+		awsSessionToken:          d.Get("aws_token").(string),
+		awsProfile:               d.Get("aws_profile").(string),
+		certPemPath:              d.Get("client_cert_path").(string),
+		keyPemPath:               d.Get("client_key_path").(string),
+		hostOverride:             d.Get("host_override").(string),
 	}, nil
 }
 
@@ -319,10 +336,18 @@ func getClient(conf *ProviderConf) (interface{}, error) {
 
 	if m := awsUrlRegexp.FindStringSubmatch(conf.parsedUrl.Hostname()); m != nil && conf.signAWSRequests {
 		log.Printf("[INFO] Using AWS: %+v", m[1])
-		opts = append(opts, elastic7.SetHttpClient(awsHttpClient(m[1], conf, map[string]string{})), elastic7.SetSniff(false))
+		client, err := awsHttpClient(m[1], conf, map[string]string{})
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, elastic7.SetHttpClient(client), elastic7.SetSniff(false))
 	} else if awsRegion := conf.awsRegion; conf.awsRegion != "" && conf.signAWSRequests {
 		log.Printf("[INFO] Using AWS: %+v", awsRegion)
-		opts = append(opts, elastic7.SetHttpClient(awsHttpClient(awsRegion, conf, map[string]string{})), elastic7.SetSniff(false))
+		client, err := awsHttpClient(awsRegion, conf, map[string]string{})
+		if err != nil {
+			return nil, err
+		}
+		opts = append(opts, elastic7.SetHttpClient(client), elastic7.SetSniff(false))
 	} else if conf.insecure || conf.cacertFile != "" {
 		opts = append(opts, elastic7.SetHttpClient(tlsHttpClient(conf, map[string]string{})), elastic7.SetSniff(false))
 	} else if conf.token != "" {
@@ -422,10 +447,18 @@ func getClient(conf *ProviderConf) (interface{}, error) {
 
 		if m := awsUrlRegexp.FindStringSubmatch(conf.parsedUrl.Hostname()); m != nil && conf.signAWSRequests {
 			log.Printf("[INFO] Using AWS: %+v", m[1])
-			opts = append(opts, elastic6.SetHttpClient(awsHttpClient(m[1], conf, map[string]string{})), elastic6.SetSniff(false))
+			client, err := awsHttpClient(m[1], conf, map[string]string{})
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, elastic6.SetHttpClient(client), elastic6.SetSniff(false))
 		} else if awsRegion := conf.awsRegion; conf.awsRegion != "" && conf.signAWSRequests {
 			log.Printf("[INFO] Using AWS: %+v", conf.awsRegion)
-			opts = append(opts, elastic6.SetHttpClient(awsHttpClient(awsRegion, conf, map[string]string{})), elastic6.SetSniff(false))
+			client, err := awsHttpClient(awsRegion, conf, map[string]string{})
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, elastic6.SetHttpClient(client), elastic6.SetSniff(false))
 		} else if conf.insecure || conf.cacertFile != "" {
 			opts = append(opts, elastic6.SetHttpClient(tlsHttpClient(conf, map[string]string{})), elastic6.SetSniff(false))
 		} else if conf.token != "" {
@@ -500,10 +533,18 @@ func getKibanaClient(conf *ProviderConf) (interface{}, error) {
 
 		if m := awsUrlRegexp.FindStringSubmatch(conf.parsedUrl.Hostname()); m != nil && conf.signAWSRequests {
 			log.Printf("[INFO] Using AWS: %+v", m[1])
-			opts = append(opts, elastic7.SetHttpClient(awsHttpClient(m[1], conf, headers)), elastic7.SetSniff(false))
+			client, err := awsHttpClient(m[1], conf, headers)
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, elastic7.SetHttpClient(client), elastic7.SetSniff(false))
 		} else if awsRegion := conf.awsRegion; conf.awsRegion != "" && conf.signAWSRequests {
 			log.Printf("[INFO] Using AWS: %+v", awsRegion)
-			opts = append(opts, elastic7.SetHttpClient(awsHttpClient(awsRegion, conf, headers)), elastic7.SetSniff(false))
+			client, err := awsHttpClient(awsRegion, conf, headers)
+			if err != nil {
+				return nil, err
+			}
+			opts = append(opts, elastic7.SetHttpClient(client), elastic7.SetSniff(false))
 		} else if conf.insecure || conf.cacertFile != "" {
 			opts = append(opts, elastic7.SetHttpClient(tlsHttpClient(conf, headers)))
 		} else if conf.token != "" {
@@ -520,15 +561,17 @@ func getKibanaClient(conf *ProviderConf) (interface{}, error) {
 	}
 }
 
-func assumeRoleCredentials(region, roleARN, profile string) *awscredentials.Credentials {
+func assumeRoleCredentials(region, roleARN, roleExternalID, roleSessionName, profile string) *awscredentials.Credentials {
 	sessOpts := awsSessionOptions(region)
 	sessOpts.Profile = profile
 
 	sess := awssession.Must(awssession.NewSessionWithOptions(sessOpts))
 	stsClient := awssts.New(sess)
 	assumeRoleProvider := &awsstscreds.AssumeRoleProvider{
-		Client:  stsClient,
-		RoleARN: roleARN,
+		Client:          stsClient,
+		RoleARN:         roleARN,
+		RoleSessionName: roleSessionName,
+		ExternalID:      aws.String(roleExternalID),
 	}
 
 	return awscredentials.NewChainCredentials([]awscredentials.Provider{assumeRoleProvider})
@@ -559,6 +602,7 @@ func awsSession(region string, conf *ProviderConf) *awssession.Session {
 
 	// 1. access keys take priority
 	// 2. next is an assume role configuration
+	// 2.b check if the role external ID is set and use it
 	// 3. followed by a profile (for assume role)
 	// 4. let the default credentials provider figure out the rest (env, ec2, etc..)
 	//
@@ -566,7 +610,10 @@ func awsSession(region string, conf *ProviderConf) *awssession.Session {
 	if conf.awsAccessKeyId != "" {
 		sessOpts.Config.Credentials = awscredentials.NewStaticCredentials(conf.awsAccessKeyId, conf.awsSecretAccessKey, conf.awsSessionToken)
 	} else if conf.awsAssumeRoleArn != "" {
-		sessOpts.Config.Credentials = assumeRoleCredentials(region, conf.awsAssumeRoleArn, conf.awsProfile)
+		if conf.awsAssumeRoleExternalID == "" {
+			conf.awsAssumeRoleExternalID = ""
+		}
+		sessOpts.Config.Credentials = assumeRoleCredentials(region, conf.awsAssumeRoleArn, conf.awsAssumeRoleExternalID, conf.awsAssumeRoleSessionName, conf.awsProfile)
 	} else if conf.awsProfile != "" {
 		sessOpts.Profile = conf.awsProfile
 	}
@@ -588,18 +635,18 @@ func awsSession(region string, conf *ProviderConf) *awssession.Session {
 	return awssession.Must(awssession.NewSessionWithOptions(sessOpts))
 }
 
-func awsHttpClient(region string, conf *ProviderConf, headers map[string]string) *http.Client {
+func awsHttpClient(region string, conf *ProviderConf, headers map[string]string) (*http.Client, error) {
 	session := awsSession(region, conf)
 	// Call Get() to ensure concurrency safe retrieval of credentials. Since the
 	// client is created in many go routines, this synchronizes it.
 	_, err := session.Config.Credentials.Get()
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	signer := awssigv4.NewSigner(session.Config.Credentials)
 	client, err := aws_signing_client.New(signer, session.Config.HTTPClient, conf.awsSig4Service, region)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	rt := WithHeader(client.Transport)
@@ -609,7 +656,7 @@ func awsHttpClient(region string, conf *ProviderConf, headers map[string]string)
 	}
 	client.Transport = rt
 
-	return client
+	return client, nil
 }
 
 func tokenHttpClient(conf *ProviderConf, headers map[string]string) *http.Client {
